@@ -38,6 +38,17 @@ const testString2 string = `
 'THIS IS A MULTI LINE STRING
 THIS IS A MULTI LINE STRING
 THIS IS A MULTI LINE STRING'
+/* 
+This is a multi line comment
+Please fucking work
+*/  
+--++*
+`
+
+const testString3 string = `
+/*
+Test Comment Please Work You Fuckhead
+*/
 `
 
 func RunTest() {
