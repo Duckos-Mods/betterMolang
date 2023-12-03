@@ -24,7 +24,9 @@ func (t *VLToken) verifyTokenType(scan *Scanner) (int, int) {
 	if scan.isAtEnd() {
 		return t.TokenType, t.consumeLength
 	}
-
+	if t.NextToken == nil {
+		return t.TokenType, t.consumeLength
+	}
 	for _, node := range t.NextToken {
 		consLeng := t.consumeLength
 		bulkMatchData := make([]byte, 0)
@@ -33,6 +35,8 @@ func (t *VLToken) verifyTokenType(scan *Scanner) (int, int) {
 		for i := 0; i < 1; i = 0 {
 			bulkMatchData = append(bulkMatchData, tempNode.SelfVal)
 			consLeng++
+			// If the next node is nil then we break
+			// That tells us that we have reached the end of the token
 			if tempNode.NextVal == nil {
 				break
 			}
@@ -46,20 +50,6 @@ func (t *VLToken) verifyTokenType(scan *Scanner) (int, int) {
 }
 
 var (
-	TOKEN_SINGLE_CHAR_MAP = map[byte]int{
-		'(':  TOKEN_LEFT_PAREN,
-		')':  TOKEN_RIGHT_PAREN,
-		'{':  TOKEN_LEFT_BRACE,
-		'}':  TOKEN_RIGHT_BRACE,
-		'[':  TOKEN_LEFT_BRACKET,
-		']':  TOKEN_RIGHT_BRACKET,
-		'.':  TOKEN_DOT,
-		',':  TOKEN_COMMA,
-		'\'': TOKEN_SINGLE_QUOTE,
-		'?':  TOKEN_QUESTION,
-		':':  TOKEN_COLON,
-		';':  TOKEN_SEMICOLON,
-	}
 
 	// We use the first byte of the token as the key
 	TOKEN_VLT_MAP = map[byte]VLToken{
@@ -136,6 +126,11 @@ var (
 					SelfVal:    '-',
 					NextVal:    nil,
 				},
+				{
+					SucessType: TOKEN_ENTITY_SELECTOR,
+					SelfVal:    '>',
+					NextVal:    nil,
+				},
 			},
 			consumeLength: 1,
 		},
@@ -168,6 +163,11 @@ var (
 					SelfVal:    '*',
 					NextVal:    nil,
 				},
+				{
+					SucessType: TOKEN_COMMENT,
+					SelfVal:    '/',
+					NextVal:    nil,
+				},
 			},
 			consumeLength: 1,
 		},
@@ -193,19 +193,70 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'#': {
-			TokenType: TOKEN_MACRO,
+		'?': {
+			TokenType: TOKEN_QUESTION,
 			NextToken: []VLTokenNode{
 				{
-					SucessType: TOKEN_COMMENT,
-					SelfVal:    '#',
-					NextVal: &VLTokenNode{
-						SucessType: TOKEN_COMMENT,
-						SelfVal:    '#',
-						NextVal:    nil,
-					},
+					SucessType: TOKEN_NULL_COALESCE,
+					SelfVal:    '?',
+					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
+		},
+		';': {
+			TokenType:     TOKEN_SEMICOLON,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		':': {
+			TokenType:     TOKEN_COLON,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		'\'': {
+			TokenType:     TOKEN_SINGLE_QUOTE,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		',': {
+			TokenType:     TOKEN_COMMA,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		'(': {
+			TokenType:     TOKEN_LEFT_PAREN,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		')': {
+			TokenType:     TOKEN_RIGHT_PAREN,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		'{': {
+			TokenType:     TOKEN_LEFT_BRACE,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		'}': {
+			TokenType:     TOKEN_RIGHT_BRACE,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		'[': {
+			TokenType:     TOKEN_LEFT_BRACKET,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		']': {
+			TokenType:     TOKEN_RIGHT_BRACKET,
+			NextToken:     nil,
+			consumeLength: 1,
+		},
+		'.': {
+			TokenType:     TOKEN_DOT,
+			NextToken:     nil,
 			consumeLength: 1,
 		},
 	}
@@ -253,17 +304,26 @@ var (
 		},
 	}
 	TOKEN_KEYWORDS = map[string]int{
-		"struct": TOKEN_STRUCT,
-		"var":    TOKEN_VAR,
-		"if":     TOKEN_IF,
-		"else":   TOKEN_ELSE,
-		"for":    TOKEN_FOR,
-		"return": TOKEN_RETURN,
-		"break":  TOKEN_BREAK,
-		"func":   TOKEN_FUNCTION,
-		"nil":    TOKEN_NULL,
-		"true":   TOKEN_TRUE,
-		"false":  TOKEN_FALSE,
+		"struct":   TOKEN_STRUCT,
+		"var":      TOKEN_VAR,
+		"if":       TOKEN_IF,
+		"else":     TOKEN_ELSE,
+		"for":      TOKEN_FOR,
+		"return":   TOKEN_RETURN,
+		"break":    TOKEN_BREAK,
+		"func":     TOKEN_FUNCTION,
+		"nil":      TOKEN_NULL,
+		"true":     TOKEN_TRUE,
+		"false":    TOKEN_FALSE,
+		"this":     TOKEN_THIS,
+		"for_each": TOKEN_FOREACH,
+		"continue": TOKEN_CONTINUE,
+		"q":        TOKEN_QUERY,
+		"query":    TOKEN_QUERY,
+		"math":     TOKEN_MATH,
+		"geometry": TOKEN_GEOMETRY,
+		"texture":  TOKEN_TEXTURE,
+		"material": TOKEN_MATERIAL,
 	}
 )
 
@@ -280,7 +340,6 @@ const (
 	//TOKEN_RIGHT_ARROW
 	TOKEN_COMMA
 	TOKEN_DOT
-	TOKEN_QUESTION
 	TOKEN_SEMICOLON
 	TOKEN_SINGLE_QUOTE
 	TOKEN_COLON
@@ -297,6 +356,7 @@ const (
 	TOKEN_PLUS_EQUAL
 	TOKEN_PLUS
 	TOKEN_MINUS_EQUAL
+	TOKEN_ENTITY_SELECTOR
 	TOKEN_MINUS
 	TOKEN_STAR_EQUAL
 	TOKEN_STAR
@@ -308,6 +368,8 @@ const (
 	TOKEN_AND_AND
 	TOKEN_OR
 	TOKEN_OR_OR
+	TOKEN_QUESTION
+	TOKEN_NULL_COALESCE
 	// Special tokens
 	TOKEN_COMMENT
 	TOKEN_MULTI_LINE_COMMENT
@@ -333,6 +395,14 @@ const (
 	TOKEN_TRUE
 	TOKEN_VAR
 	TOKEN_STRUCT // Fuck who ever asked me to add these imma cry adding these fml fml fml
+	TOKEN_THIS
+	TOKEN_FOREACH
+	TOKEN_CONTINUE
+	TOKEN_QUERY
+	TOKEN_MATH
+	TOKEN_GEOMETRY
+	TOKEN_TEXTURE
+	TOKEN_MATERIAL
 
 	EOF
 )
@@ -419,18 +489,7 @@ func (s *Scanner) scanToken() {
 		// Ignore whitespace
 		return
 	}
-	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
-		if token == TOKEN_NULL {
-			s.throw(fmt.Sprintf("Unknown token on line %d", s.Line))
-		}
-		if function, ok := TOKEN_SPECIAL_MAP[token]; ok {
-			function(s)
-		} else {
-			s.addToken(token, 1)
-		}
-
-		return
-	} else if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
+	if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
 		verified, consumeLength := token.verifyTokenType(s)
 		if funct, ok := TOKEN_SPECIAL_MAP[verified]; ok {
 			funct(s)
