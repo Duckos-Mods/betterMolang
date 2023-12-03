@@ -29,6 +29,16 @@ rotate(px,py,45.0);
 //comment
 `
 
-func RunTest() {
+const testString2 string = `
+### This is a comment
++- / * ### This is also a comment
+[{([{()}])}] ### This is also a comment
+`
 
+func RunTest() {
+	scanner := NewScanner()
+	tokens := scanner.ScanTokens(testString2)
+	for _, token := range tokens {
+		println(token.Value)
+	}
 }

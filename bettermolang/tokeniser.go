@@ -23,15 +23,18 @@ type VLTokenNode struct {
 
 // VL stands for Variable Length
 type VLToken struct {
-	TokenType int
-	NextToken []VLTokenNode
+	TokenType     int
+	NextToken     []VLTokenNode
+	consumeLength int
 }
 
-func (t *VLToken) verifyTokenType(scan *Scanner) int {
+func (t *VLToken) verifyTokenType(scan *Scanner) (int, int) {
 	if scan.isAtEnd() {
-		return t.TokenType
+		return t.TokenType, t.consumeLength
 	}
+
 	for _, node := range t.NextToken {
+		consLeng := t.consumeLength
 		bulkMatchData := make([]byte, 0)
 		var tempNode *VLTokenNode = &node
 		// This will loop till break!
@@ -40,13 +43,14 @@ func (t *VLToken) verifyTokenType(scan *Scanner) int {
 			if tempNode.NextVal == nil {
 				break
 			}
+			consLeng++
 			tempNode = tempNode.NextVal
 		}
 		if scan.bulkMatch(bulkMatchData) {
-			return tempNode.SucessType
+			return tempNode.SucessType, consLeng
 		}
 	}
-	return t.TokenType
+	return t.TokenType, t.consumeLength
 }
 
 var (
@@ -73,6 +77,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'=': VLToken{
 			TokenType: TOKEN_EQUAL,
@@ -83,6 +88,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'>': VLToken{
 			TokenType: TOKEN_GREATER,
@@ -93,6 +99,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'<': VLToken{
 			TokenType: TOKEN_LESS,
@@ -103,6 +110,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'+': VLToken{
 			TokenType: TOKEN_PLUS,
@@ -118,6 +126,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'-': VLToken{
 			TokenType: TOKEN_MINUS,
@@ -133,6 +142,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'*': VLToken{
 			TokenType: TOKEN_STAR,
@@ -143,6 +153,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'/': VLToken{
 			TokenType: TOKEN_SLASH,
@@ -153,6 +164,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'&': VLToken{
 			TokenType: TOKEN_AND,
@@ -163,6 +175,7 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'|': VLToken{
 			TokenType: TOKEN_OR,
@@ -173,12 +186,13 @@ var (
 					NextVal:    nil,
 				},
 			},
+			consumeLength: 1,
 		},
 		'#': VLToken{
 			TokenType: TOKEN_NULL,
 			NextToken: []VLTokenNode{
 				VLTokenNode{
-					SucessType: TOKEN_NULL,
+					SucessType: TOKEN_COMMENT,
 					SelfVal:    '#',
 					NextVal: &VLTokenNode{
 						SucessType: TOKEN_COMMENT,
@@ -187,6 +201,7 @@ var (
 					},
 				},
 			},
+			consumeLength: 1,
 		},
 	}
 )
@@ -329,10 +344,10 @@ func (s *Scanner) match(expected byte) bool {
 	return true
 }
 
-func (s *Scanner) addToken(tokenType int) {
+func (s *Scanner) addToken(tokenType int, consumeLength int) {
 	s.Tokens = append(s.Tokens, Token{
 		TokenType: tokenType,
-		Value:     strings.TrimSpace(s.Source[s.Start:s.Current]),
+		Value:     strings.TrimSpace(s.Source[s.Current-consumeLength : s.Current]),
 		Line:      s.Line,
 	})
 }
@@ -347,12 +362,12 @@ func (s *Scanner) scanToken() {
 		break
 	}
 	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
-		s.addToken(token)
+		s.addToken(token, 1)
 		return
 	} else if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
-		verified := token.verifyTokenType(s)
+		verified, consumeLength := token.verifyTokenType(s)
 		if verified != TOKEN_COMMENT {
-			s.addToken(verified)
+			s.addToken(verified, consumeLength)
 		} else {
 			s.removeComment()
 		}
