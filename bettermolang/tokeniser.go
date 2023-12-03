@@ -52,7 +52,9 @@ var (
 		'{':  TOKEN_LEFT_BRACE,
 		'}':  TOKEN_RIGHT_BRACE,
 		'[':  TOKEN_LEFT_BRACKET,
+		']':  TOKEN_RIGHT_BRACKET,
 		'.':  TOKEN_DOT,
+		',':  TOKEN_COMMA,
 		'\'': TOKEN_SINGLE_QUOTE,
 		'?':  TOKEN_QUESTION,
 		':':  TOKEN_COLON,
@@ -445,6 +447,9 @@ func (s *Scanner) scanToken() {
 	} else if s.isAlpha(singleChar) {
 		s.scanIdentifier()
 		return
+	} else {
+
+		s.throw(fmt.Sprintf("Unknown token on line %d, Token Val of %s", s.Line, string(singleChar)))
 	}
 }
 
