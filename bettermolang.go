@@ -25,7 +25,7 @@ Basic Explanation of arrays:
 	- Arrays are indexed with the [] operator (revolitionary I know)
 	- Arrays are declared with the array keyword
 	example:
-		myArray = array(1, 2, 4)
+		myArray = (3)<1, 2, 3>
 	- Arrays are 0 indexed
 	- Arrays size is fixed at declaration and cannot be changed (yet)
 `
