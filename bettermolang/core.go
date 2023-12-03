@@ -68,6 +68,6 @@ func RunTest() {
 	scanner := NewScanner()
 	tokens := scanner.ScanTokens(testString)
 	for _, token := range tokens {
-		println(fmt.Sprintf("String: %s, ID: %d", token.Value, token.TokenType))
+		println(fmt.Sprintf("String: %s, ID: %s", token.Value, token.ToString()))
 	}
 }
