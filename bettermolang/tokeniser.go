@@ -174,6 +174,20 @@ var (
 				},
 			},
 		},
+		'#': VLToken{
+			TokenType: TOKEN_NULL,
+			NextToken: []VLTokenNode{
+				VLTokenNode{
+					SucessType: TOKEN_NULL,
+					SelfVal:    '#',
+					NextVal: &VLTokenNode{
+						SucessType: TOKEN_COMMENT,
+						SelfVal:    '#',
+						NextVal:    nil,
+					},
+				},
+			},
+		},
 	}
 )
 
@@ -216,6 +230,8 @@ const (
 	TOKEN_AND_AND
 	TOKEN_OR
 	TOKEN_OR_OR
+	// Special tokens
+	TOKEN_COMMENT
 
 	// Literals.
 	TOKEN_IDENTIFIER
@@ -236,6 +252,7 @@ const (
 	TOKEN_RETURN
 	TOKEN_TRUE
 	TOKEN_VAR
+	TOKEN_STRUCT // Fuck who ever asked me to add these imma cry adding these fml fml fml
 
 	EOF
 )
@@ -264,6 +281,13 @@ func (s *Scanner) advance() byte {
 	return s.Source[s.Current-1]
 }
 
+func (s *Scanner) peak() byte {
+	if s.isAtEnd() {
+		return 0
+	}
+	return s.Source[s.Current]
+}
+
 func (s *Scanner) peekNext() byte {
 	if s.Current+1 >= len(s.Source) {
 		return 0
@@ -285,7 +309,7 @@ func (s *Scanner) bulkMatch(expected []byte) bool {
 	// We do this so we can reset the index if it fails
 	tempIndex := s.Current
 	for _, char := range expected {
-		if s.Source[s.Current] != char {
+		if !s.match(char) {
 			return false
 		}
 		tempIndex++
@@ -315,12 +339,31 @@ func (s *Scanner) addToken(tokenType int) {
 
 func (s *Scanner) scanToken() {
 	var singleChar byte = s.advance()
+	switch singleChar {
+	case '\n':
+		s.Line++
+	case ' ', '\r', '\t':
+		// Ignore whitespace
+		break
+	}
 	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
 		s.addToken(token)
 		return
 	} else if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
-		s.addToken(token.verifyTokenType(s))
+		verified := token.verifyTokenType(s)
+		if verified != TOKEN_COMMENT {
+			s.addToken(verified)
+		} else {
+			s.removeComment()
+		}
 		return
+	}
+}
+
+func (s *Scanner) removeComment() {
+	// Just remove the comment
+	for s.peak() != '\n' && !s.isAtEnd() {
+		s.advance()
 	}
 }
 
@@ -330,4 +373,14 @@ func (s *Scanner) ScanTokens(code string) []Token {
 		s.scanToken()
 	}
 	return s.Tokens
+}
+
+func NewScanner() *Scanner {
+	return &Scanner{
+		Source:  "",
+		Tokens:  make([]Token, 0),
+		Current: 0,
+		Line:    1,
+		Start:   0,
+	}
 }
