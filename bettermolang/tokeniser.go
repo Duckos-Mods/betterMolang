@@ -1,6 +1,9 @@
 package bettermolang
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Tokeniser regexes
 // const (
@@ -55,23 +58,23 @@ func (t *VLToken) verifyTokenType(scan *Scanner) (int, int) {
 
 var (
 	TOKEN_SINGLE_CHAR_MAP = map[byte]int{
-		'(': TOKEN_LEFT_PAREN,
-		')': TOKEN_RIGHT_PAREN,
-		'{': TOKEN_LEFT_BRACE,
-		'}': TOKEN_RIGHT_BRACE,
-		'[': TOKEN_LEFT_BRACKET,
-		'.': TOKEN_DOT,
-		'"': TOKEN_DOUBLE_QUOTE,
-		'?': TOKEN_QUESTION,
-		':': TOKEN_COLON,
+		'(':  TOKEN_LEFT_PAREN,
+		')':  TOKEN_RIGHT_PAREN,
+		'{':  TOKEN_LEFT_BRACE,
+		'}':  TOKEN_RIGHT_BRACE,
+		'[':  TOKEN_LEFT_BRACKET,
+		'.':  TOKEN_DOT,
+		'\'': TOKEN_SINGLE_QUOTE,
+		'?':  TOKEN_QUESTION,
+		':':  TOKEN_COLON,
 	}
 
 	// We use the first byte of the token as the key
 	TOKEN_VLT_MAP = map[byte]VLToken{
-		'!': VLToken{
+		'!': {
 			TokenType: TOKEN_BANG,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_BANG_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
@@ -79,10 +82,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'=': VLToken{
+		'=': {
 			TokenType: TOKEN_EQUAL,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_EQUAL_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
@@ -90,10 +93,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'>': VLToken{
+		'>': {
 			TokenType: TOKEN_GREATER,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_GREATER_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
@@ -101,10 +104,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'<': VLToken{
+		'<': {
 			TokenType: TOKEN_LESS,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_LESS_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
@@ -112,15 +115,15 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'+': VLToken{
+		'+': {
 			TokenType: TOKEN_PLUS,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_PLUS_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
 				},
-				VLTokenNode{
+				{
 					SucessType: TOKEN_PLUS_PLUS,
 					SelfVal:    '+',
 					NextVal:    nil,
@@ -128,15 +131,15 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'-': VLToken{
+		'-': {
 			TokenType: TOKEN_MINUS,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_MINUS_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
 				},
-				VLTokenNode{
+				{
 					SucessType: TOKEN_MINUS_MINUS,
 					SelfVal:    '-',
 					NextVal:    nil,
@@ -144,10 +147,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'*': VLToken{
+		'*': {
 			TokenType: TOKEN_STAR,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_STAR_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
@@ -155,10 +158,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'/': VLToken{
+		'/': {
 			TokenType: TOKEN_SLASH,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_SLASH_EQUAL,
 					SelfVal:    '=',
 					NextVal:    nil,
@@ -166,10 +169,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'&': VLToken{
+		'&': {
 			TokenType: TOKEN_AND,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_AND_AND,
 					SelfVal:    '&',
 					NextVal:    nil,
@@ -177,10 +180,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'|': VLToken{
+		'|': {
 			TokenType: TOKEN_OR,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_OR_OR,
 					SelfVal:    '|',
 					NextVal:    nil,
@@ -188,10 +191,10 @@ var (
 			},
 			consumeLength: 1,
 		},
-		'#': VLToken{
+		'#': {
 			TokenType: TOKEN_NULL,
 			NextToken: []VLTokenNode{
-				VLTokenNode{
+				{
 					SucessType: TOKEN_COMMENT,
 					SelfVal:    '#',
 					NextVal: &VLTokenNode{
@@ -202,6 +205,25 @@ var (
 				},
 			},
 			consumeLength: 1,
+		},
+	}
+
+	TOKEN_SPECIAL_MAP = map[int]func(*Scanner){
+		TOKEN_SINGLE_QUOTE: func(scan *Scanner) {
+			consumeLength := 1
+			for scan.peak() != '\'' && !scan.isAtEnd() {
+				if scan.peak() == '\n' {
+					scan.Line++
+				}
+				consumeLength++
+				scan.advance()
+			}
+			if scan.isAtEnd() {
+				scan.throw(fmt.Sprintf("Unterminated string on line %d", scan.Line))
+			}
+			scan.advance()
+			consumeLength++
+			scan.addToken(TOKEN_STRING, consumeLength)
 		},
 	}
 )
@@ -219,7 +241,7 @@ const (
 	TOKEN_DOT
 	TOKEN_QUESTION
 	TOKEN_SEMICOLON
-	TOKEN_DOUBLE_QUOTE
+	TOKEN_SINGLE_QUOTE
 	TOKEN_COLON
 
 	// One or two character tokens.
@@ -284,7 +306,6 @@ type Scanner struct {
 	Tokens  []Token
 	Current int
 	Line    int
-	Start   int
 }
 
 func (s *Scanner) isAtEnd() bool {
@@ -362,7 +383,12 @@ func (s *Scanner) scanToken() {
 		break
 	}
 	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
-		s.addToken(token, 1)
+		if function, ok := TOKEN_SPECIAL_MAP[token]; ok {
+			function(s)
+		} else {
+			s.addToken(token, 1)
+		}
+
 		return
 	} else if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
 		verified, consumeLength := token.verifyTokenType(s)
@@ -382,6 +408,14 @@ func (s *Scanner) removeComment() {
 	}
 }
 
+func (s *Scanner) isDigit(c byte) bool {
+	return c >= '0' && c <= '9'
+}
+
+func (s *Scanner) throw(err string) {
+	panic(err)
+}
+
 func (s *Scanner) ScanTokens(code string) []Token {
 	s.Source = code
 	for !s.isAtEnd() {
@@ -396,6 +430,5 @@ func NewScanner() *Scanner {
 		Tokens:  make([]Token, 0),
 		Current: 0,
 		Line:    1,
-		Start:   0,
 	}
 }
