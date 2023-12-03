@@ -5,17 +5,6 @@ import (
 	"strings"
 )
 
-// Tokeniser regexes
-// const (
-// 	r_COMMENT    = `/[*][^*]*[*]+([^/*][^*]*[*]+)*/|//[^\n]*`
-// 	r_STRING     = `[\"\'].*[\"\']`
-// 	r_OPERATOR   = `\:|\?|=|-=|/=|\*=|\+=|\+|-|/|\*|>|<|>=|<=|==|!=|!|&&|`
-// 	r_SEPARATOR  = `\(|\{|\[|\]|\}|\)|;|,`
-// 	r_NUMBER     = `[1-9]\d*(\.\d+)?`
-// 	r_IDENTIFIER = `[a-z]+[0-9_\-]*`
-// 	r_MACRO      = `\#[a-z]+`
-// )
-
 // Create something like a linked list of tokens
 
 type VLTokenNode struct {
@@ -203,7 +192,7 @@ var (
 			consumeLength: 1,
 		},
 		'#': {
-			TokenType: TOKEN_NULL,
+			TokenType: TOKEN_MACRO,
 			NextToken: []VLTokenNode{
 				{
 					SucessType: TOKEN_COMMENT,
@@ -271,6 +260,8 @@ var (
 		"break":  TOKEN_BREAK,
 		"func":   TOKEN_FUNCTION,
 		"nil":    TOKEN_NULL,
+		"true":   TOKEN_TRUE,
+		"false":  TOKEN_FALSE,
 	}
 )
 
@@ -318,6 +309,7 @@ const (
 	// Special tokens
 	TOKEN_COMMENT
 	TOKEN_MULTI_LINE_COMMENT
+	TOKEN_MACRO // Will handle this later
 
 	// Literals.
 	TOKEN_IDENTIFIER
