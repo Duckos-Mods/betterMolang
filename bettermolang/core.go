@@ -33,6 +33,11 @@ const testString2 string = `
 ### This is a comment
 +- / * ### This is also a comment
 [{([{()}])}] ### This is also a comment
+'This is a string!!!!!!!!!'
+### Multi line string
+'THIS IS A MULTI LINE STRING
+THIS IS A MULTI LINE STRING
+THIS IS A MULTI LINE STRING'
 `
 
 func RunTest() {
