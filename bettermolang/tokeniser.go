@@ -43,10 +43,10 @@ func (t *VLToken) verifyTokenType(scan *Scanner) (int, int) {
 		// This will loop till break!
 		for i := 0; i < 1; i = 0 {
 			bulkMatchData = append(bulkMatchData, tempNode.SelfVal)
+			consLeng++
 			if tempNode.NextVal == nil {
 				break
 			}
-			consLeng++
 			tempNode = tempNode.NextVal
 		}
 		if scan.bulkMatch(bulkMatchData) {
@@ -155,6 +155,11 @@ var (
 					SelfVal:    '=',
 					NextVal:    nil,
 				},
+				{
+					SucessType: TOKEN_MULTI_LINE_COMMENT,
+					SelfVal:    '/',
+					NextVal:    nil,
+				},
 			},
 			consumeLength: 1,
 		},
@@ -166,11 +171,16 @@ var (
 					SelfVal:    '=',
 					NextVal:    nil,
 				},
+				{
+					SucessType: TOKEN_MULTI_LINE_COMMENT,
+					SelfVal:    '*',
+					NextVal:    nil,
+				},
 			},
 			consumeLength: 1,
 		},
 		'&': {
-			TokenType: TOKEN_AND,
+			TokenType: TOKEN_NULL,
 			NextToken: []VLTokenNode{
 				{
 					SucessType: TOKEN_AND_AND,
@@ -181,7 +191,7 @@ var (
 			consumeLength: 1,
 		},
 		'|': {
-			TokenType: TOKEN_OR,
+			TokenType: TOKEN_NULL,
 			NextToken: []VLTokenNode{
 				{
 					SucessType: TOKEN_OR_OR,
@@ -224,6 +234,12 @@ var (
 			scan.advance()
 			consumeLength++
 			scan.addToken(TOKEN_STRING, consumeLength)
+		},
+		TOKEN_MULTI_LINE_COMMENT: func(scan *Scanner) {
+			scan.scanTillDelim("*/")
+		},
+		TOKEN_COMMENT: func(scan *Scanner) {
+			scan.scanTillDelim("\n")
 		},
 	}
 )
@@ -269,6 +285,7 @@ const (
 	TOKEN_OR_OR
 	// Special tokens
 	TOKEN_COMMENT
+	TOKEN_MULTI_LINE_COMMENT
 
 	// Literals.
 	TOKEN_IDENTIFIER
@@ -378,11 +395,15 @@ func (s *Scanner) scanToken() {
 	switch singleChar {
 	case '\n':
 		s.Line++
+		return
 	case ' ', '\r', '\t':
 		// Ignore whitespace
 		break
 	}
 	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
+		if token == TOKEN_NULL {
+			s.throw(fmt.Sprintf("Unknown token on line %d", s.Line))
+		}
 		if function, ok := TOKEN_SPECIAL_MAP[token]; ok {
 			function(s)
 		} else {
@@ -392,19 +413,34 @@ func (s *Scanner) scanToken() {
 		return
 	} else if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
 		verified, consumeLength := token.verifyTokenType(s)
-		if verified != TOKEN_COMMENT {
-			s.addToken(verified, consumeLength)
+		if funct, ok := TOKEN_SPECIAL_MAP[verified]; ok {
+			funct(s)
 		} else {
-			s.removeComment()
+			if verified == TOKEN_NULL {
+				s.throw(fmt.Sprintf("Unknown token on line %d", s.Line))
+			}
+			s.addToken(verified, consumeLength)
 		}
-		return
 	}
 }
 
-func (s *Scanner) removeComment() {
-	// Just remove the comment
-	for s.peak() != '\n' && !s.isAtEnd() {
-		s.advance()
+func (s *Scanner) scanTillDelim(delim string) {
+	compArr := make([]byte, len(delim))
+	// remove all data from the current position to the delim
+	for i := 0; i < len(delim); i++ {
+		compArr[i] = s.advance()
+	}
+	for !s.isAtEnd() {
+		{
+			// Shift everything in the compArr to the left by 1
+			for i := 0; i < len(compArr)-1; i++ {
+				compArr[i] = compArr[i+1]
+			}
+			compArr[len(compArr)-1] = s.advance()
+			if string(compArr) == delim {
+				return
+			}
+		}
 	}
 }
 
@@ -429,6 +465,6 @@ func NewScanner() *Scanner {
 		Source:  "",
 		Tokens:  make([]Token, 0),
 		Current: 0,
-		Line:    1,
+		Line:    0,
 	}
 }
