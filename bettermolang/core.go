@@ -3,7 +3,7 @@ package bettermolang
 import "fmt"
 
 const testString string = `
-func rotate(inout x, inout y, a){
+func rotate(x, y, a){
     ca = cos(a);
     sa = sin(a);
     x = x*ca - y*sa;
@@ -19,10 +19,9 @@ vec var p = (1,2)
 arr tmp a = [1,2,2,7,5]
 var px = a[3];
 tmp py = true + 1;
-py = square(py); //comment
+py = square(py); #comment
 px ++;
 rotate(px,py,45.0);
-
 /*
 "(//filter this -> ))"
 '(stuff)'
