@@ -19,7 +19,7 @@ vec var p = (1,2)
 arr tmp a = [1,2,2,7,5]
 var px = a[3];
 tmp py = true + 1;
-py = square(py); #comment
+py = square(py); //comment
 px ++;
 rotate(px,py,45.0);
 /*
