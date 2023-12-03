@@ -27,7 +27,7 @@ type VLToken struct {
 	NextToken []VLTokenNode
 }
 
-func (t *VLToken) verifyTokenbType(scan *Scanner) int {
+func (t *VLToken) verifyTokenType(scan *Scanner) int {
 	if scan.isAtEnd() {
 		return t.TokenType
 	}
@@ -318,8 +318,9 @@ func (s *Scanner) scanToken() {
 	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
 		s.addToken(token)
 		return
-	} else {
-		panic("Unknown token")
+	} else if token, ok := TOKEN_VLT_MAP[singleChar]; ok {
+		s.addToken(token.verifyTokenType(s))
+		return
 	}
 }
 
