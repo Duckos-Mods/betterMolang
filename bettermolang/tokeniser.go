@@ -67,6 +67,7 @@ var (
 		'\'': TOKEN_SINGLE_QUOTE,
 		'?':  TOKEN_QUESTION,
 		':':  TOKEN_COLON,
+		';':  TOKEN_SEMICOLON,
 	}
 
 	// We use the first byte of the token as the key
@@ -220,20 +221,38 @@ var (
 
 	TOKEN_SPECIAL_MAP = map[int]func(*Scanner){
 		TOKEN_SINGLE_QUOTE: func(scan *Scanner) {
-			consumeLength := 1
-			for scan.peak() != '\'' && !scan.isAtEnd() {
+			strVal := make([]byte, 0)
+			strVal = append(strVal, scan.peakN(-1)) // Add the single quote by reading the previous char which is unsafe but i dont care
+			// because i am slow im going to build a token then push it back. Which is a waste of memory but i dont care
+			var escapeChar byte = 0x0
+			for scan.peak() != '\'' && !scan.isAtEnd() || escapeChar == '\\' {
+				if escapeChar == '\\' {
+					escapeChar = 0x0
+					strVal = append(strVal, scan.peak())
+					scan.skip()
+					continue
+				}
 				if scan.peak() == '\n' {
 					scan.Line++
 				}
-				consumeLength++
-				scan.advance()
+				if scan.peak() == '\\' {
+					escapeChar = scan.peak()
+					scan.skip()
+				} else {
+					strVal = append(strVal, scan.peak())
+					scan.skip()
+				}
 			}
 			if scan.isAtEnd() {
 				scan.throw(fmt.Sprintf("Unterminated string on line %d", scan.Line))
 			}
-			scan.advance()
-			consumeLength++
-			scan.addToken(TOKEN_STRING, consumeLength)
+			strVal = append(strVal, scan.peak())
+			scan.skip()
+			scan.Tokens = append(scan.Tokens, Token{
+				TokenType: TOKEN_STRING,
+				Value:     string(strVal),
+				Line:      scan.Line,
+			})
 		},
 		TOKEN_MULTI_LINE_COMMENT: func(scan *Scanner) {
 			scan.scanTillDelim("*/")
@@ -241,6 +260,17 @@ var (
 		TOKEN_COMMENT: func(scan *Scanner) {
 			scan.scanTillDelim("\n")
 		},
+	}
+	TOKEN_KEYWORDS = map[string]int{
+		"struct": TOKEN_STRUCT,
+		"var":    TOKEN_VAR,
+		"if":     TOKEN_IF,
+		"else":   TOKEN_ELSE,
+		"for":    TOKEN_FOR,
+		"return": TOKEN_RETURN,
+		"break":  TOKEN_BREAK,
+		"func":   TOKEN_FUNCTION,
+		"nil":    TOKEN_NULL,
 	}
 )
 
@@ -253,6 +283,8 @@ const (
 	TOKEN_RIGHT_BRACE
 	TOKEN_LEFT_BRACKET
 	TOKEN_RIGHT_BRACKET
+	//TOKEN_LEFT_ARROW
+	//TOKEN_RIGHT_ARROW
 	TOKEN_COMMA
 	TOKEN_DOT
 	TOKEN_QUESTION
@@ -341,13 +373,6 @@ func (s *Scanner) peak() byte {
 	return s.Source[s.Current]
 }
 
-func (s *Scanner) peekNext() byte {
-	if s.Current+1 >= len(s.Source) {
-		return 0
-	}
-	return s.Source[s.Current+1]
-}
-
 func (s *Scanner) peakN(depth int) byte {
 	if s.Current+depth >= len(s.Source) {
 		return 0
@@ -398,7 +423,7 @@ func (s *Scanner) scanToken() {
 		return
 	case ' ', '\r', '\t':
 		// Ignore whitespace
-		break
+		return
 	}
 	if token, ok := TOKEN_SINGLE_CHAR_MAP[singleChar]; ok {
 		if token == TOKEN_NULL {
@@ -420,7 +445,14 @@ func (s *Scanner) scanToken() {
 				s.throw(fmt.Sprintf("Unknown token on line %d", s.Line))
 			}
 			s.addToken(verified, consumeLength)
+			return
 		}
+	} else if s.isDigit(singleChar) {
+		s.scanNumber()
+		return
+	} else if s.isAlpha(singleChar) {
+		s.scanIdentifier()
+		return
 	}
 }
 
@@ -450,6 +482,51 @@ func (s *Scanner) isDigit(c byte) bool {
 
 func (s *Scanner) throw(err string) {
 	panic(err)
+}
+
+func (s *Scanner) skip() {
+	s.Current++ // Skip the current token
+}
+
+func (s *Scanner) scanNumber() {
+	consumeLength := 1
+	for s.isDigit(s.peak()) {
+		consumeLength++
+		s.advance()
+	}
+	if s.peak() == '.' && s.isDigit(s.peakN(1)) {
+		consumeLength++
+		s.advance()
+		for s.isDigit(s.peak()) {
+			consumeLength++
+			s.advance()
+		}
+	}
+	s.addToken(TOKEN_NUMBER, consumeLength)
+}
+
+func (s *Scanner) scanIdentifier() {
+	consumeLength := 1
+	for s.isAlphaNumeric(s.peak()) {
+		consumeLength++
+		s.advance()
+	}
+	// Check if the identifier is a keyword
+	identifier := strings.TrimSpace(s.Source[s.Current-consumeLength : s.Current])
+	if keyword, ok := TOKEN_KEYWORDS[identifier]; ok {
+		s.addToken(keyword, consumeLength)
+	} else {
+		s.addToken(TOKEN_IDENTIFIER, consumeLength)
+	}
+}
+
+func (s *Scanner) isAlpha(c byte) bool {
+	return c >= 'a' && c <= 'z' ||
+		c >= 'A' && c <= 'Z'
+}
+
+func (s *Scanner) isAlphaNumeric(c byte) bool {
+	return s.isAlpha(c) || s.isDigit(c)
 }
 
 func (s *Scanner) ScanTokens(code string) []Token {
